@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavRail, TabBar } from './components/Nav.jsx'
 import { AskPill, AskSheet } from './components/Ask.jsx'
+import TasksSurface from './components/TasksSurface.jsx'
 
 const NAV = [
   { id: 'home',  icon: 'home',  label: 'Home' },
@@ -58,7 +59,7 @@ export default function App() {
 
   const surface = () => {
     switch (tab) {
-      case 'tasks': return <div data-testid="surface-tasks" style={{ color: 'var(--ink-3)', fontFamily: 'var(--sans)', fontSize: 14, padding: 16 }}>tasks</div>
+      case 'tasks': return <TasksSurface bp={bp} />
       case 'soap':  return <div data-testid="surface-soap"  style={{ color: 'var(--ink-3)', fontFamily: 'var(--sans)', fontSize: 14, padding: 16 }}>soap</div>
       case 'chaos': return <div data-testid="surface-chaos" style={{ color: 'var(--ink-3)', fontFamily: 'var(--sans)', fontSize: 14, padding: 16 }}>chaos</div>
       case 'notes': return <div data-testid="surface-notes" style={{ color: 'var(--ink-3)', fontFamily: 'var(--sans)', fontSize: 14, padding: 16 }}>notes</div>
