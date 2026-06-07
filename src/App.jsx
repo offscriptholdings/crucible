@@ -35,6 +35,7 @@ export default function App() {
   const bp = useBreakpoint()
   const [tab, setTab] = useState('home')
   const [ask, setAsk] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const surface = () => {
     switch (tab) {
@@ -50,11 +51,11 @@ export default function App() {
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--sans)' }}>
         <div className="cx-scroll" style={{ flex: 1, padding: '56px 16px 52px' }}>
-          {tab === 'home' ? <HomeSurface bp={bp} /> : surface()}
+          {tab === 'home' ? <HomeSurface bp={bp} key={refreshKey} /> : surface()}
         </div>
         <AskPill compact onClick={() => setAsk(true)} style={{ position: 'absolute', right: 16, bottom: 92 }} />
         <TabBar active={tab} onNav={setTab} nav={NAV} />
-        {ask && <AskSheet onClose={() => setAsk(false)} />}
+        {ask && <AskSheet onClose={() => setAsk(false)} onDone={() => { setRefreshKey(k => k + 1); setAsk(false) }} />}
       </div>
     )
   }
@@ -65,10 +66,10 @@ export default function App() {
     <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)', display: 'flex', fontFamily: 'var(--sans)' }}>
       <NavRail active={tab} onNav={setTab} nav={NAV} width={railW} />
       <main className="cx-scroll" style={{ flex: 1, padding: padMain, paddingBottom: padMain + 78 }}>
-        {tab === 'home' ? <HomeSurface bp={bp} /> : <div style={{ maxWidth: bp === 'ipad' ? 1180 : 980 }}>{surface()}</div>}
+        {tab === 'home' ? <HomeSurface bp={bp} key={refreshKey} /> : <div style={{ maxWidth: bp === 'ipad' ? 1180 : 980 }}>{surface()}</div>}
       </main>
       <AskPill onClick={() => setAsk(true)} style={{ position: 'absolute', right: padMain, bottom: padMain }} />
-      {ask && <AskSheet onClose={() => setAsk(false)} />}
+      {ask && <AskSheet onClose={() => setAsk(false)} onDone={() => { setRefreshKey(k => k + 1); setAsk(false) }} />}
     </div>
   )
 }
