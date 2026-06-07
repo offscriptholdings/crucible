@@ -60,6 +60,16 @@ function Field({ label, children }) {
   )
 }
 
+function Check({ on, onClick }) {
+  return (
+    <button className={'cx-check' + (on ? ' on' : '')} onClick={onClick} aria-pressed={on}>
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+        <path d="M2.5 7.5l3 3 6-7" stroke="#1f2a30" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </button>
+  )
+}
+
 function CockpitTaskRow({ task, projects }) {
   const proj = projects.find(p => p.id === task.project_id)
   return (
@@ -243,6 +253,30 @@ function PeoplePanel({ people }) {
 }
 
 function EventDetail({ ev, onClose }) {
+  const [run, setRun] = useState(null)
+
+  useEffect(() => {
+    if (!supabase) return
+    supabase.from('checklist_runs')
+      .select('id, checklists(name), checklist_run_items(id, text, checked, sort_order)')
+      .eq('calendar_event_id', ev.id)
+      .eq('archived', false)
+      .maybeSingle()
+      .then(({ data }) => setRun(data || null))
+  }, [ev.id])
+
+  const toggleItem = async (itemId, current) => {
+    setRun(prev => prev ? {
+      ...prev,
+      checklist_run_items: prev.checklist_run_items.map(i =>
+        i.id === itemId ? { ...i, checked: !current } : i
+      ),
+    } : prev)
+    if (supabase) await supabase.from('checklist_run_items').update({ checked: !current }).eq('id', itemId)
+  }
+
+  const items = run ? [...run.checklist_run_items].sort((a, b) => a.sort_order - b.sort_order) : []
+
   return (
     <Sheet data-testid="event-detail-sheet" onClose={onClose}>
       <SheetHead
@@ -261,6 +295,25 @@ function EventDetail({ ev, onClose }) {
           <div className="eyebrow" style={{ marginBottom: 7, color: 'var(--accent)' }}>The open thread</div>
           <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 16.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>{ev.thread}</div>
         </div>
+        {run && (
+          <div data-testid="event-checklist" style={{ marginTop: 18 }}>
+            <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--ink-2)' }}>
+              Checklist — {run.checklists?.name}
+            </div>
+            {items.map(item => (
+              <div key={item.id} className="cx-row" style={{ alignItems: 'center', padding: '9px 0' }}>
+                <Check on={item.checked} onClick={() => toggleItem(item.id, item.checked)} />
+                <div style={{
+                  flex: 1, minWidth: 0,
+                  fontFamily: 'var(--sans)', fontSize: 14.5, lineHeight: 1.3,
+                  color: item.checked ? 'var(--ink-4)' : 'var(--ink)',
+                  textDecoration: item.checked ? 'line-through' : 'none',
+                  textDecorationColor: 'var(--ink-4)',
+                }}>{item.text}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Sheet>
   )
