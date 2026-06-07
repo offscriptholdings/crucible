@@ -3,6 +3,7 @@ import { NavRail, TabBar } from './components/Nav.jsx'
 import { AskPill, AskSheet } from './components/Ask.jsx'
 import TasksSurface from './components/TasksSurface.jsx'
 import HomeSurface from './components/HomeSurface.jsx'
+import SoapSurface from './components/SoapSurface.jsx'
 
 const NAV = [
   { id: 'home',  icon: 'home',  label: 'Home' },
@@ -37,7 +38,7 @@ export default function App() {
   const surface = () => {
     switch (tab) {
       case 'tasks': return <TasksSurface bp={bp} />
-      case 'soap':  return <div data-testid="surface-soap"  style={{ color: 'var(--ink-3)', fontFamily: 'var(--sans)', fontSize: 14, padding: 16 }}>soap</div>
+      case 'soap':  return <SoapSurface bp={bp} />
       case 'chaos': return <div data-testid="surface-chaos" style={{ color: 'var(--ink-3)', fontFamily: 'var(--sans)', fontSize: 14, padding: 16 }}>chaos</div>
       case 'notes': return <div data-testid="surface-notes" style={{ color: 'var(--ink-3)', fontFamily: 'var(--sans)', fontSize: 14, padding: 16 }}>notes</div>
       default: return null
