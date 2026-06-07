@@ -87,6 +87,7 @@ export default function TasksSurface({ bp }) {
   const [loading, setLoading] = useState(true)
   const [sub, setSub] = useState('tasks')
   const [proj, setProj] = useState(null)
+  const [runs, setRuns] = useState(null) // null = not yet loaded
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return }
@@ -100,9 +101,31 @@ export default function TasksSurface({ bp }) {
     })
   }, [])
 
+  useEffect(() => {
+    if (sub !== 'checklists' || runs !== null) return
+    if (!supabase) { setRuns([]); return }
+    const today = new Date().toISOString().split('T')[0]
+    supabase.from('checklist_runs')
+      .select('id, for_date, checklists(name), checklist_run_items(id, text, checked, sort_order)')
+      .eq('archived', false)
+      .gte('for_date', today)
+      .order('for_date')
+      .then(({ data }) => setRuns(data || []))
+  }, [sub, runs])
+
   const toggle = async (id) => {
     setRawTasks(prev => prev.map(t => t.id === id ? { ...t, done: true } : t))
     if (supabase) await supabase.from('tasks').update({ done: true }).eq('id', id)
+  }
+
+  const toggleRun = async (itemId, runId, current) => {
+    setRuns(prev => (prev || []).map(r => r.id !== runId ? r : {
+      ...r,
+      checklist_run_items: r.checklist_run_items.map(i =>
+        i.id === itemId ? { ...i, checked: !current } : i
+      ),
+    }))
+    if (supabase) await supabase.from('checklist_run_items').update({ checked: !current }).eq('id', itemId)
   }
 
   const open = rawTasks.filter(t => !t.done)
@@ -114,9 +137,51 @@ export default function TasksSurface({ bp }) {
   const columns = bp === 'ipad' ? 2 : 1
 
   const SEG_OPTIONS = [
-    { v: 'tasks',    label: 'Tasks',    testid: 'tasks-seg-tasks' },
-    { v: 'projects', label: 'Projects', testid: 'tasks-seg-projects' },
+    { v: 'tasks',      label: 'Tasks',      testid: 'tasks-seg-tasks' },
+    { v: 'projects',   label: 'Projects',   testid: 'tasks-seg-projects' },
+    { v: 'checklists', label: 'Checklists', testid: 'tasks-seg-checklists' },
   ]
+
+  if (sub === 'checklists') {
+    const activeRuns = (runs || []).map(r => ({
+      ...r,
+      checklist_run_items: [...r.checklist_run_items].sort((a, b) => a.sort_order - b.sort_order),
+    }))
+    return (
+      <div data-testid="surface-tasks">
+        <SurfaceHeader title="Tasks" right={
+          <Segmented options={SEG_OPTIONS} value={sub} onChange={setSub} />
+        } />
+        <div data-testid="tasks-checklists-view" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {runs === null && (
+            <div style={{ fontFamily: 'var(--sans)', color: 'var(--ink-3)', fontSize: 14 }}>Loading…</div>
+          )}
+          {runs !== null && activeRuns.length === 0 && (
+            <div style={{ fontFamily: 'var(--sans)', color: 'var(--ink-3)', fontSize: 14, padding: '8px 0' }}>No active checklists.</div>
+          )}
+          {activeRuns.map(run => (
+            <Panel key={run.id} eyebrow={run.for_date} title={run.checklists?.name} pad={16}>
+              {run.checklist_run_items.map(item => (
+                <div key={item.id} className="cx-row" style={{ alignItems: 'center', padding: '9px 0' }}>
+                  <Check on={item.checked} onClick={() => toggleRun(item.id, run.id, item.checked)} />
+                  <div style={{
+                    flex: 1, minWidth: 0,
+                    fontFamily: 'var(--sans)', fontSize: 14.5, lineHeight: 1.3,
+                    color: item.checked ? 'var(--ink-4)' : 'var(--ink)',
+                    textDecoration: item.checked ? 'line-through' : 'none',
+                    textDecorationColor: 'var(--ink-4)',
+                  }}>{item.text}</div>
+                </div>
+              ))}
+              {run.checklist_run_items.length === 0 && (
+                <div style={{ fontFamily: 'var(--sans)', color: 'var(--ink-4)', fontSize: 13, padding: '6px 0' }}>No items.</div>
+              )}
+            </Panel>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   if (sub === 'projects') {
     if (proj) {
