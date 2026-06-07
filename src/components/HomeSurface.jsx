@@ -337,6 +337,18 @@ export default function HomeSurface({ bp }) {
     <EventDetail ev={eventDetail} onClose={() => setEventDetail(null)} />
   ) : null
 
+  if (bp === 'iphone') {
+    return (
+      <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <BriefBlock brief={brief} todayLabel={todayLabel} />
+        <CalendarPanel calDays={calDays.slice(0, 1)} onOpen={setEventDetail} />
+        <TasksMini tasks={tasks} projects={projects} />
+        <LoopsPanel loops={loops} />
+        {detailSheet}
+      </div>
+    )
+  }
+
   if (bp === 'ipad') {
     return (
       <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
