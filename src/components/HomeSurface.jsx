@@ -394,7 +394,7 @@ export default function HomeSurface({ bp }) {
     return (
       <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <BriefBlock brief={brief} todayLabel={todayLabel} />
-        <CalendarPanel calDays={calDays.slice(0, 1)} onOpen={setEventDetail} />
+        <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
         <TasksMini tasks={tasks} projects={projects} />
         <LoopsPanel loops={loops} />
         {detailSheet}
