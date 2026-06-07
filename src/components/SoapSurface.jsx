@@ -105,6 +105,14 @@ export default function SoapSurface({ bp }) {
           <div className="mono" data-testid="soap-ref" style={{ fontSize: 11.5, color: 'var(--accent)', letterSpacing: '0.05em', marginBottom: 8 }}>
             {brief?.ref || '—'}
           </div>
+          {brief?.verse && (
+            <p data-testid="soap-verse" className="serif italic" style={{
+              margin: '8px 0 14px', color: 'var(--ink)', fontSize: 17,
+              lineHeight: 1.6, letterSpacing: '-0.01em', textWrap: 'pretty',
+            }}>
+              {brief.verse}
+            </p>
+          )}
           <hr className="cx-div" style={{ margin: '0 0 18px' }} />
           <Area k="o" label="Observation" ph="What does the passage say?" rows={3} f={f} set={set} />
           <Area k="a" label="Application" ph="What does it ask of today?" rows={2} f={f} set={set} />
