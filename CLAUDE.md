@@ -45,7 +45,7 @@ No Tailwind. Use `var(--token-name)` for all colors, radii, shadows, and type.
 
 The render app is dumb. It reads from Supabase and displays. It never writes `brief`, `calendar_events`, or `projects` — those are COS-written.
 
-Exceptions: `tasks.done` — the Tasks tab writes check-off state (MTC-307). `soap_entries` INSERT — the SOAP tab writes user journal entries (MTC-313). `notes` INSERT — the Notes tab captures notes (MTC-314).
+Exceptions: `tasks.done` — the Tasks tab writes check-off state (MTC-307). `soap_entries` INSERT — the SOAP tab writes user journal entries (MTC-313). `notes` INSERT — the Notes tab captures notes (MTC-314). `cos_session_requests` INSERT — the Ask-Crucible pill triggers a COS session (MTC-317).
 
 ## Vercel
 
