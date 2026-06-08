@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase.js'
 import Icon from './Icon.jsx'
 import { Sheet, SheetHead } from './Sheet.jsx'
 
+const COS_TERMINAL_URL = import.meta.env.VITE_COS_TERMINAL_URL || ''
+
 const SRC = {
   personal: { label: 'Personal', color: 'var(--tag-personal)' },
   '98':     { label: '98',       color: 'var(--tag-98)' },
@@ -455,6 +457,44 @@ function EventDetail({ ev, onClose }) {
   )
 }
 
+function COSBar() {
+  const runSession = async () => {
+    if (!supabase) return
+    await supabase.from('cos_session_requests').insert({})
+  }
+  return (
+    <div data-testid="cos-bar" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+      <button
+        data-testid="cos-run-session"
+        onClick={runSession}
+        style={{
+          background: 'var(--accent)', color: '#1f2a30', border: 'none',
+          borderRadius: 10, padding: '8px 16px', cursor: 'pointer',
+          fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 600,
+        }}
+      >
+        Run a session
+      </button>
+      {COS_TERMINAL_URL && (
+        <a
+          data-testid="cos-engage"
+          href={COS_TERMINAL_URL}
+          target="_blank"
+          rel="noopener"
+          style={{
+            background: 'none', border: '1px solid var(--line)',
+            borderRadius: 10, padding: '8px 16px',
+            fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 500, color: 'var(--ink-2)',
+            textDecoration: 'none',
+          }}
+        >
+          Engage COS
+        </a>
+      )}
+    </div>
+  )
+}
+
 export default function HomeSurface({ bp }) {
   const [loading, setLoading] = useState(true)
   const [brief, setBrief] = useState(null)
@@ -546,6 +586,7 @@ export default function HomeSurface({ bp }) {
     return (
       <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <BriefBlock brief={brief} todayLabel={todayLabel} />
+        <COSBar />
         {upNextNudge}
         <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
         <TasksMini tasks={tasks} projects={projects} />
@@ -560,6 +601,7 @@ export default function HomeSurface({ bp }) {
     return (
       <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <BriefBlock brief={brief} todayLabel={todayLabel} />
+        <COSBar />
         {upNextNudge}
         <div style={{ display: 'grid', gridTemplateColumns: '1.18fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
           <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
@@ -581,6 +623,7 @@ export default function HomeSurface({ bp }) {
   return (
     <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <BriefBlock brief={brief} todayLabel={todayLabel} />
+      <COSBar />
       {upNextNudge}
       <div style={{ display: 'grid', gridTemplateColumns: '1.08fr 1fr', gap: 16, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
