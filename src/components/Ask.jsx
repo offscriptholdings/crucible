@@ -3,6 +3,8 @@ import { Sheet, SheetHead } from './Sheet.jsx'
 import { supabase } from '../lib/supabase.js'
 import Icon from './Icon.jsx'
 
+const COS_TERMINAL_URL = import.meta.env.VITE_COS_TERMINAL_URL || ''
+
 export function AskPill({ onClick, style, compact }) {
   return (
     <button data-testid="ask-pill" className="cx-ask" style={style} onClick={onClick}>
@@ -73,6 +75,29 @@ export function AskSheet({ onClose, onDone }) {
         <div style={{ fontFamily: 'var(--sans)', fontSize: 11.5, color: 'var(--ink-4)', textAlign: 'center' }}>
           A launcher, not a conversation.
         </div>
+        {COS_TERMINAL_URL && (
+          <>
+            <hr className="cx-div" style={{ margin: '4px 0' }} />
+            <a
+              data-testid="engage-cos-link"
+              href={COS_TERMINAL_URL}
+              target="_blank"
+              rel="noopener"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                background: 'none', border: '1px solid var(--line)',
+                borderRadius: 12, padding: '11px 20px', cursor: 'pointer',
+                fontFamily: 'var(--sans)', fontSize: 14, fontWeight: 500, color: 'var(--ink-2)',
+                textDecoration: 'none',
+              }}
+            >
+              Engage COS
+            </a>
+            <div style={{ fontFamily: 'var(--sans)', fontSize: 11.5, color: 'var(--ink-4)', textAlign: 'center' }}>
+              Opens the live interactive terminal.
+            </div>
+          </>
+        )}
       </div>
     )
     if (phase === 'running') return (
