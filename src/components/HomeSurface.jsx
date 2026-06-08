@@ -52,6 +52,7 @@ function Temp({ value }) {
 }
 
 function Field({ label, children }) {
+  if (!children || children === '—') return null
   return (
     <div style={{ marginBottom: 18 }}>
       <div className="eyebrow" style={{ marginBottom: 7 }}>{label}</div>
@@ -424,10 +425,12 @@ function EventDetail({ ev, onClose }) {
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 140px' }}><Field label="Who">{ev.who}</Field></div>
         </div>
-        <div style={{ background: 'var(--bg-sunken)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px', marginTop: 2 }}>
-          <div className="eyebrow" style={{ marginBottom: 7, color: 'var(--accent)' }}>The open thread</div>
-          <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 16.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>{ev.thread}</div>
-        </div>
+        {ev.thread && ev.thread !== '—' && (
+          <div style={{ background: 'var(--bg-sunken)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px', marginTop: 2 }}>
+            <div className="eyebrow" style={{ marginBottom: 7, color: 'var(--accent)' }}>The open thread</div>
+            <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 16.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>{ev.thread}</div>
+          </div>
+        )}
         {run && (
           <div data-testid="event-checklist" style={{ marginTop: 18 }}>
             <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--ink-2)' }}>
@@ -473,7 +476,8 @@ export default function HomeSurface({ bp }) {
 
     Promise.all([
       supabase.from('brief').select('*').order('for_date', { ascending: false }).limit(1),
-      supabase.from('calendar_events').select('*')
+      supabase.from('calendar_events')
+        .select('id, for_date, day_label, time, title, src, about, prep, who, thread')
         .gte('for_date', todayStr).lte('for_date', in3Days)
         .order('for_date').order('time'),
       supabase.from('open_loops').select('*').order('hot', { ascending: false }),
