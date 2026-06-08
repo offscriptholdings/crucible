@@ -70,6 +70,32 @@ function Check({ on, onClick }) {
   )
 }
 
+function UpNextNudge({ count, onClick }) {
+  if (count === 0) return null
+  return (
+    <button
+      data-testid="staged-nudge"
+      className="cx-press"
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        background: 'none', border: 'none', cursor: 'pointer',
+        padding: '6px 0',
+        fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-3)',
+        textAlign: 'left', width: '100%',
+      }}
+    >
+      <span style={{
+        background: 'var(--accent)', color: '#1f2a30',
+        borderRadius: 6, padding: '2px 7px',
+        fontWeight: 600, fontSize: 12, letterSpacing: '0.02em',
+        flex: 'none',
+      }}>{count}</span>
+      <span>staged for your next session →</span>
+    </button>
+  )
+}
+
 function CockpitTaskRow({ task, projects }) {
   const proj = projects.find(p => p.id === task.project_id)
   return (
@@ -252,6 +278,106 @@ function PeoplePanel({ people }) {
   )
 }
 
+const KIND_LABEL = {
+  note_triage: 'Notes',
+  checklist_proposal: 'Checklist',
+  recurring_due: 'Recurring',
+  loop_nudge: 'Loop',
+  brief_followup: 'Followup',
+  other: 'Item',
+}
+
+function UpNextSheet({ staged: initialItems, onClose }) {
+  const [items, setItems] = useState(initialItems)
+
+  const dispatch = async (itemId, disposition) => {
+    setItems(prev => prev.map(i => i.id === itemId ? { ...i, status: 'acting' } : i))
+    if (!supabase) return
+    await supabase.from('cos_session_requests')
+      .insert({ scope: { staged_item_id: itemId, disposition } })
+  }
+
+  const runFull = async () => {
+    if (!supabase) return
+    await supabase.from('cos_session_requests').insert({})
+    onClose()
+  }
+
+  return (
+    <Sheet data-testid="up-next-sheet" onClose={onClose}>
+      <SheetHead title="Up Next" onClose={onClose} />
+      <div className="cx-scroll" style={{ padding: '14px 18px 22px' }}>
+        {items.length === 0 && (
+          <p style={{ fontFamily: 'var(--sans)', color: 'var(--ink-3)', fontSize: 14, margin: '8px 0' }}>
+            No staged items — run a full session to plan your next one.
+          </p>
+        )}
+        {items.map(item => (
+          <div
+            key={item.id}
+            data-testid="up-next-item"
+            style={{ padding: '14px 0', borderBottom: '1px solid var(--line)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+              <span style={{
+                fontFamily: 'var(--sans)', fontSize: 14.5, fontWeight: 500, lineHeight: 1.3,
+                color: item.status === 'acting' ? 'var(--ink-3)' : 'var(--ink)',
+              }}>{item.title}</span>
+              <span style={{
+                fontFamily: 'var(--sans)', fontSize: 11, fontWeight: 600,
+                color: 'var(--ink-4)', background: 'var(--bg-sunken)',
+                borderRadius: 5, padding: '1px 6px',
+                letterSpacing: '0.04em', textTransform: 'uppercase', flex: 'none',
+              }}>{KIND_LABEL[item.kind] || 'Item'}</span>
+              {item.status === 'acting' && (
+                <span style={{ fontFamily: 'var(--sans)', fontSize: 11, color: 'var(--accent)', flex: 'none' }}>
+                  acting…
+                </span>
+              )}
+            </div>
+            {item.detail && (
+              <p style={{ margin: '0 0 10px', fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-3)', lineHeight: 1.4 }}>
+                {item.detail}
+              </p>
+            )}
+            {item.dispositions && item.dispositions.length > 0 && item.status === 'staged' && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {item.dispositions.map(d => (
+                  <button
+                    key={d}
+                    data-testid="disposition-btn"
+                    onClick={() => dispatch(item.id, d)}
+                    style={{
+                      background: 'var(--bg-sunken)', border: '1px solid var(--line)',
+                      borderRadius: 10, padding: '7px 14px', cursor: 'pointer',
+                      fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 500, color: 'var(--ink-2)',
+                    }}
+                  >
+                    {d.charAt(0).toUpperCase() + d.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        <button
+          data-testid="up-next-full-session"
+          onClick={runFull}
+          style={{
+            marginTop: 18, width: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            background: 'var(--accent)', color: '#1f2a30', border: 'none',
+            borderRadius: 12, padding: '13px 20px', cursor: 'pointer',
+            fontFamily: 'var(--sans)', fontSize: 15, fontWeight: 600,
+          }}
+        >
+          Run a full session
+        </button>
+      </div>
+    </Sheet>
+  )
+}
+
 function EventDetail({ ev, onClose }) {
   const [run, setRun] = useState(null)
 
@@ -329,6 +455,8 @@ export default function HomeSurface({ bp }) {
   const [tasks, setTasks] = useState({ today: [], week: [] })
   const [projects, setProjects] = useState([])
   const [eventDetail, setEventDetail] = useState(null)
+  const [staged, setStaged] = useState([])
+  const [upNextOpen, setUpNextOpen] = useState(false)
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return }
@@ -346,8 +474,12 @@ export default function HomeSurface({ bp }) {
       supabase.from('people').select('*'),
       supabase.from('tasks').select('*').eq('done', false).in('horizon', ['today', 'week']).order('horizon'),
       supabase.from('projects').select('id, name'),
+      supabase.from('staged_items')
+        .select('id, kind, title, detail, dispositions, status')
+        .in('status', ['staged', 'acting'])
+        .order('created_at'),
     ])
-      .then(([briefRes, calRes, loopsRes, protosRes, peopleRes, tasksRes, projRes]) => {
+      .then(([briefRes, calRes, loopsRes, protosRes, peopleRes, tasksRes, projRes, stagedRes]) => {
         setBrief(briefRes.data?.[0] || null)
 
         const groups = []
@@ -369,6 +501,7 @@ export default function HomeSurface({ bp }) {
         })
 
         setProjects(projRes.data || [])
+        setStaged(stagedRes.data || [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -386,6 +519,14 @@ export default function HomeSurface({ bp }) {
     weekday: 'long', month: 'long', day: 'numeric',
   }).toUpperCase()
 
+  const stagedCount = staged.filter(s => s.status === 'staged').length
+  const upNextNudge = stagedCount > 0 ? (
+    <UpNextNudge count={stagedCount} onClick={() => setUpNextOpen(true)} />
+  ) : null
+  const upNextSheet = upNextOpen ? (
+    <UpNextSheet staged={staged} onClose={() => setUpNextOpen(false)} />
+  ) : null
+
   const detailSheet = eventDetail ? (
     <EventDetail ev={eventDetail} onClose={() => setEventDetail(null)} />
   ) : null
@@ -394,10 +535,12 @@ export default function HomeSurface({ bp }) {
     return (
       <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <BriefBlock brief={brief} todayLabel={todayLabel} />
+        {upNextNudge}
         <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
         <TasksMini tasks={tasks} projects={projects} />
         <LoopsPanel loops={loops} />
         {detailSheet}
+        {upNextSheet}
       </div>
     )
   }
@@ -406,6 +549,7 @@ export default function HomeSurface({ bp }) {
     return (
       <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <BriefBlock brief={brief} todayLabel={todayLabel} />
+        {upNextNudge}
         <div style={{ display: 'grid', gridTemplateColumns: '1.18fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
           <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -418,6 +562,7 @@ export default function HomeSurface({ bp }) {
           </div>
         </div>
         {detailSheet}
+        {upNextSheet}
       </div>
     )
   }
@@ -425,6 +570,7 @@ export default function HomeSurface({ bp }) {
   return (
     <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <BriefBlock brief={brief} todayLabel={todayLabel} />
+      {upNextNudge}
       <div style={{ display: 'grid', gridTemplateColumns: '1.08fr 1fr', gap: 16, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
@@ -437,6 +583,7 @@ export default function HomeSurface({ bp }) {
         </div>
       </div>
       {detailSheet}
+      {upNextSheet}
     </div>
   )
 }
