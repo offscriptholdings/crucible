@@ -297,6 +297,18 @@ const KIND_LABEL = {
   other: 'Item',
 }
 
+function parseTime(t) {
+  if (!t) return -1
+  const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (!m) return -1
+  let h = parseInt(m[1], 10)
+  const min = parseInt(m[2], 10)
+  const pm = m[3].toUpperCase() === 'PM'
+  if (pm && h !== 12) h += 12
+  if (!pm && h === 12) h = 0
+  return h * 60 + min
+}
+
 function UpNextSheet({ staged: initialItems, onClose }) {
   const [items, setItems] = useState(initialItems)
 
@@ -539,6 +551,7 @@ export default function HomeSurface({ bp }) {
           if (g) g.events.push(ev)
           else groups.push({ for_date: ev.for_date, label: ev.day_label, events: [ev] })
         })
+        groups.forEach(g => g.events.sort((a, b) => parseTime(a.time) - parseTime(b.time)))
         setCalDays(groups)
 
         setLoops(loopsRes.data || [])
