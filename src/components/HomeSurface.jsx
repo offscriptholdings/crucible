@@ -123,6 +123,16 @@ function parseBold(text) {
   );
 }
 
+function parseCloseQuote(close) {
+  if (!close) return { quote: '', attribution: null }
+  const idx = close.lastIndexOf(' — ')
+  if (idx === -1) return { quote: close.trim(), attribution: null }
+  return {
+    quote: close.slice(0, idx).trim(),
+    attribution: close.slice(idx + 3).trim(),
+  }
+}
+
 function BriefBlock({ brief, todayLabel }) {
   return (
     <section className="cx-panel" data-testid="panel-brief" style={{
@@ -146,10 +156,23 @@ function BriefBlock({ brief, todayLabel }) {
             textWrap: 'pretty', maxWidth: '30em',
           }}>{brief.verse}</p>
           <hr className="cx-div" style={{ margin: '20px 0 16px' }} />
-          <p style={{
-            margin: 0, fontFamily: 'var(--sans)', color: 'var(--ink-2)',
-            fontSize: 15.5, lineHeight: 1.5, textWrap: 'pretty',
-          }}>{parseBold(brief.close)}</p>
+          {(() => {
+            const { quote, attribution } = parseCloseQuote(brief.close)
+            return (
+              <>
+                <p className="serif italic" data-testid="brief-quote" style={{
+                  margin: 0, fontSize: 26, lineHeight: 1.4, letterSpacing: '-0.01em',
+                  color: 'var(--ink)', textWrap: 'pretty',
+                }}>{quote}</p>
+                {attribution && (
+                  <div className="mono" data-testid="brief-attribution" style={{
+                    marginTop: 8, fontSize: 12.5, color: 'var(--accent)',
+                    letterSpacing: '0.06em', fontVariantCaps: 'small-caps',
+                  }}>{attribution}</div>
+                )}
+              </>
+            )
+          })()}
         </>
       ) : (
         <p style={{ fontFamily: 'var(--sans)', color: 'var(--ink-3)', fontSize: 14 }}>
