@@ -70,7 +70,7 @@ export default function SoapSurface({ bp }) {
     if (!supabase) { setLoading(false); return }
     Promise.all([
       supabase.from('soap_entries').select('*').order('created_at', { ascending: false }),
-      supabase.from('brief').select('ref, verse').eq('for_date', today).single(),
+      supabase.from('brief').select('ref, verse, passage_ref, passage').eq('for_date', today).single(),
     ])
       .then(([entriesRes, briefRes]) => {
         setEntries(entriesRes.data || [])
@@ -102,17 +102,47 @@ export default function SoapSurface({ bp }) {
       <div style={{ display: 'grid', gridTemplateColumns: columns > 1 ? '1.1fr 0.9fr' : '1fr', gap: 18, alignItems: 'start' }}>
 
         <Panel>
-          <div className="mono" data-testid="soap-ref" style={{ fontSize: 11.5, color: 'var(--accent)', letterSpacing: '0.05em', marginBottom: 8 }}>
-            {brief?.ref || '—'}
+          <div className="mono" data-testid="soap-ref" style={{
+            fontSize: 11.5, color: 'var(--accent)', letterSpacing: '0.05em', marginBottom: 8,
+          }}>
+            {brief
+              ? (brief.passage ? (brief.passage_ref || brief.ref || '—') : (brief.ref || '—'))
+              : '—'}
           </div>
-          {brief?.verse && (
+
+          {brief?.passage ? (
+            <div data-testid="soap-passage" style={{
+              maxHeight: 300,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              margin: '8px 0 14px',
+            }}>
+              <p className="serif" style={{
+                margin: 0, color: 'var(--ink)', fontSize: 16,
+                lineHeight: 1.75, letterSpacing: '-0.01em', textWrap: 'pretty',
+              }}>
+                {brief.passage.replace(/\s*\(ESV\)\s*$/, '').trim()}
+              </p>
+              <p style={{
+                margin: '8px 0 0',
+                fontFamily: 'var(--sans)', fontSize: 12,
+                color: 'var(--ink-4)', letterSpacing: '0.01em',
+              }}>(ESV)</p>
+            </div>
+          ) : brief?.verse ? (
             <p data-testid="soap-verse" className="serif italic" style={{
               margin: '8px 0 14px', color: 'var(--ink)', fontSize: 17,
               lineHeight: 1.6, letterSpacing: '-0.01em', textWrap: 'pretty',
             }}>
               {brief.verse}
             </p>
+          ) : (
+            <p data-testid="soap-verse" style={{
+              margin: '8px 0 14px', fontFamily: 'var(--sans)',
+              fontSize: 15, color: 'var(--ink-4)',
+            }}>—</p>
           )}
+
           <hr className="cx-div" style={{ margin: '0 0 18px' }} />
           <Area k="o" label="Observation" ph="What does the passage say?" rows={3} f={f} set={set} />
           <Area k="a" label="Application" ph="What does it ask of today?" rows={2} f={f} set={set} />
