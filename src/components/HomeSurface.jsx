@@ -113,6 +113,13 @@ function CockpitTaskRow({ task, projects }) {
   )
 }
 
+function parseBold(text) {
+  if (!text) return null;
+  return text.split(/\*\*(.+?)\*\*/).map((part, i) =>
+    i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+  );
+}
+
 function BriefBlock({ brief, todayLabel }) {
   return (
     <section className="cx-panel" data-testid="panel-brief" style={{
@@ -139,7 +146,7 @@ function BriefBlock({ brief, todayLabel }) {
           <p style={{
             margin: 0, fontFamily: 'var(--sans)', color: 'var(--ink-2)',
             fontSize: 15.5, lineHeight: 1.5, textWrap: 'pretty',
-          }}>{brief.close}</p>
+          }}>{parseBold(brief.close)}</p>
         </>
       ) : (
         <p style={{ fontFamily: 'var(--sans)', color: 'var(--ink-3)', fontSize: 14 }}>
