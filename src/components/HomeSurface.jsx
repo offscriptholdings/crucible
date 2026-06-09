@@ -495,14 +495,29 @@ function EventDetail({ ev, onClose }) {
 function ChiefOfStaffCard({ stagedCount, onUpNextClick }) {
   const [phase, setPhase] = useState('idle') // 'idle' | 'running' | 'done' | 'error'
   const [errMsg, setErrMsg] = useState('')
+  const [reqId, setReqId] = useState(null)
+  const [logLines, setLogLines] = useState([])
   const timerRef = useRef(null)
 
   useEffect(() => {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [])
 
+  useEffect(() => {
+    if (!reqId || !supabase) return
+    const channel = supabase
+      .channel('cos-log-' + reqId)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'cos_session_log', filter: `request_id=eq.${reqId}` },
+        (payload) => { setLogLines(prev => [...prev, payload.new.line]) }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [reqId])
+
   async function runSession() {
     if (!supabase) { setPhase('error'); setErrMsg('Supabase unavailable — check env vars.'); return }
+    setLogLines([])
     setPhase('running')
     const { data, error } = await supabase
       .from('cos_session_requests')
@@ -510,6 +525,7 @@ function ChiefOfStaffCard({ stagedCount, onUpNextClick }) {
       .select('id')
       .single()
     if (error) { setPhase('error'); setErrMsg(error.message); return }
+    setReqId(data.id)
     timerRef.current = setInterval(async () => {
       const { data: row } = await supabase
         .from('cos_session_requests')
@@ -568,15 +584,21 @@ function ChiefOfStaffCard({ stagedCount, onUpNextClick }) {
         </div>
       )}
       {phase === 'running' && (
-        <div style={{ fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-3)', padding: '4px 0' }}>
-          Session running…
-          <span style={{ fontSize: 11, color: 'var(--ink-4)', display: 'block', marginTop: 4 }}>This takes a few minutes.</span>
+        <div
+          data-testid="cos-log-feed"
+          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--ink-3)', padding: '4px 0', display: 'flex', flexDirection: 'column', gap: 3 }}
+        >
+          {logLines.length === 0 ? (
+            <span style={{ color: 'var(--ink-4)' }}>Starting…</span>
+          ) : (
+            logLines.map((line, i) => <span key={i}>{line}</span>)
+          )}
         </div>
       )}
       {phase === 'done' && (
         <div style={{ fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-2)', padding: '4px 0' }}>
           Done — brief updated.
-          <button onClick={() => setPhase('idle')} style={{
+          <button onClick={() => { setPhase('idle'); setReqId(null); setLogLines([]) }} style={{
             display: 'block', marginTop: 8, background: 'none', border: 'none',
             padding: 0, cursor: 'pointer', fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--ink-4)',
           }}>
@@ -588,7 +610,7 @@ function ChiefOfStaffCard({ stagedCount, onUpNextClick }) {
         <div style={{ fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-2)', padding: '4px 0' }}>
           Session failed.
           {errMsg && <span style={{ display: 'block', fontSize: 12, color: 'var(--ink-4)', marginTop: 4, wordBreak: 'break-word' }}>{errMsg}</span>}
-          <button onClick={() => setPhase('idle')} style={{
+          <button onClick={() => { setPhase('idle'); setReqId(null); setLogLines([]) }} style={{
             display: 'block', marginTop: 8, background: 'none', border: '1px solid var(--line)',
             borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
             fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--ink-3)',
