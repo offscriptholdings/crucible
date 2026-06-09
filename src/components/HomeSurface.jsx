@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
 import Icon from './Icon.jsx'
 import { Sheet, SheetHead } from './Sheet.jsx'
+
+const COS_TERMINAL_URL = import.meta.env.VITE_COS_TERMINAL_URL || ''
 
 const SRC = {
   personal: { label: 'Personal', color: 'var(--tag-personal)' },
@@ -490,6 +492,115 @@ function EventDetail({ ev, onClose }) {
   )
 }
 
+function ChiefOfStaffCard({ stagedCount, onUpNextClick }) {
+  const [phase, setPhase] = useState('idle') // 'idle' | 'running' | 'done' | 'error'
+  const [errMsg, setErrMsg] = useState('')
+  const timerRef = useRef(null)
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [])
+
+  async function runSession() {
+    if (!supabase) { setPhase('error'); setErrMsg('Supabase unavailable — check env vars.'); return }
+    setPhase('running')
+    const { data, error } = await supabase
+      .from('cos_session_requests')
+      .insert({})
+      .select('id')
+      .single()
+    if (error) { setPhase('error'); setErrMsg(error.message); return }
+    timerRef.current = setInterval(async () => {
+      const { data: row } = await supabase
+        .from('cos_session_requests')
+        .select('status, error')
+        .eq('id', data.id)
+        .single()
+      if (!row) return
+      if (row.status === 'done') {
+        clearInterval(timerRef.current)
+        setPhase('done')
+      } else if (row.status === 'error') {
+        clearInterval(timerRef.current)
+        setPhase('error')
+        setErrMsg(row.error || 'Session failed.')
+      }
+    }, 3000)
+  }
+
+  return (
+    <Panel eyebrow="Chief of Staff" pad={16} data-testid="chief-of-staff">
+      {phase === 'idle' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button
+            data-testid="cos-run-session"
+            onClick={runSession}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              background: 'var(--accent)', color: '#1f2a30', border: 'none',
+              borderRadius: 10, padding: '10px 18px', cursor: 'pointer',
+              fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 600,
+            }}
+          >
+            Run a session
+          </button>
+          {COS_TERMINAL_URL && (
+            <>
+              <hr className="cx-div" style={{ margin: '2px 0' }} />
+              <a
+                data-testid="cos-engage"
+                href={COS_TERMINAL_URL}
+                target="_blank"
+                rel="noopener"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'none', border: '1px solid var(--line)',
+                  borderRadius: 10, padding: '9px 18px',
+                  fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 500, color: 'var(--ink-2)',
+                  textDecoration: 'none',
+                }}
+              >
+                Engage COS
+              </a>
+            </>
+          )}
+          <UpNextNudge count={stagedCount} onClick={onUpNextClick} />
+        </div>
+      )}
+      {phase === 'running' && (
+        <div style={{ fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-3)', padding: '4px 0' }}>
+          Session running…
+          <span style={{ fontSize: 11, color: 'var(--ink-4)', display: 'block', marginTop: 4 }}>This takes a few minutes.</span>
+        </div>
+      )}
+      {phase === 'done' && (
+        <div style={{ fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-2)', padding: '4px 0' }}>
+          Done — brief updated.
+          <button onClick={() => setPhase('idle')} style={{
+            display: 'block', marginTop: 8, background: 'none', border: 'none',
+            padding: 0, cursor: 'pointer', fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--ink-4)',
+          }}>
+            Run again
+          </button>
+        </div>
+      )}
+      {phase === 'error' && (
+        <div style={{ fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-2)', padding: '4px 0' }}>
+          Session failed.
+          {errMsg && <span style={{ display: 'block', fontSize: 12, color: 'var(--ink-4)', marginTop: 4, wordBreak: 'break-word' }}>{errMsg}</span>}
+          <button onClick={() => setPhase('idle')} style={{
+            display: 'block', marginTop: 8, background: 'none', border: '1px solid var(--line)',
+            borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
+            fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--ink-3)',
+          }}>
+            Try again
+          </button>
+        </div>
+      )}
+    </Panel>
+  )
+}
+
 export default function HomeSurface({ bp }) {
   const [loading, setLoading] = useState(true)
   const [brief, setBrief] = useState(null)
@@ -567,9 +678,6 @@ export default function HomeSurface({ bp }) {
   }).toUpperCase()
 
   const stagedCount = staged.filter(s => s.status === 'staged').length
-  const upNextNudge = stagedCount > 0 ? (
-    <UpNextNudge count={stagedCount} onClick={() => setUpNextOpen(true)} />
-  ) : null
   const upNextSheet = upNextOpen ? (
     <UpNextSheet staged={staged} onClose={() => setUpNextOpen(false)} />
   ) : null
@@ -582,10 +690,10 @@ export default function HomeSurface({ bp }) {
     return (
       <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <BriefBlock brief={brief} todayLabel={todayLabel} />
-        {upNextNudge}
         <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
         <TasksMini tasks={tasks} projects={projects} />
         <LoopsPanel loops={loops} />
+        <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} />
         {detailSheet}
         {upNextSheet}
       </div>
@@ -596,7 +704,6 @@ export default function HomeSurface({ bp }) {
     return (
       <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <BriefBlock brief={brief} todayLabel={todayLabel} />
-        {upNextNudge}
         <div style={{ display: 'grid', gridTemplateColumns: '1.18fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
           <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -608,6 +715,7 @@ export default function HomeSurface({ bp }) {
             <PeoplePanel people={people} />
           </div>
         </div>
+        <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} />
         {detailSheet}
         {upNextSheet}
       </div>
@@ -617,7 +725,6 @@ export default function HomeSurface({ bp }) {
   return (
     <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <BriefBlock brief={brief} todayLabel={todayLabel} />
-      {upNextNudge}
       <div style={{ display: 'grid', gridTemplateColumns: '1.08fr 1fr', gap: 16, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
@@ -629,6 +736,7 @@ export default function HomeSurface({ bp }) {
           <ProtocolsPanel protocols={protocols} />
         </div>
       </div>
+      <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} />
       {detailSheet}
       {upNextSheet}
     </div>
