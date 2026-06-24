@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import Icon from './Icon.jsx'
+import TaskDetail from './TaskDetail.jsx'
 
 function SurfaceHeader({ title, right }) {
   return (
@@ -59,12 +60,16 @@ function Check({ on, onClick }) {
   )
 }
 
-function TaskRow({ task, projects, onToggle, showProject = true }) {
+function TaskRow({ task, projects, onToggle, onOpen, showProject = true }) {
   const proj = projects.find(p => p.id === task.project_id)
   return (
     <div className="cx-row" style={{ alignItems: 'center', padding: '9px 0' }}>
       <Check on={task.done} onClick={() => onToggle(task.id)} />
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div
+        data-testid="task-row-text"
+        style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+        onClick={() => onOpen && onOpen(task)}
+      >
         <div style={{
           fontFamily: 'var(--sans)', fontSize: 14.5, lineHeight: 1.3,
           color: task.done ? 'var(--ink-4)' : 'var(--ink)',
@@ -88,6 +93,7 @@ export default function TasksSurface({ bp }) {
   const [sub, setSub] = useState('tasks')
   const [proj, setProj] = useState(null)
   const [runs, setRuns] = useState(null) // null = not yet loaded
+  const [active, setActive] = useState(null)
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return }
@@ -116,6 +122,16 @@ export default function TasksSurface({ bp }) {
   const toggle = async (id) => {
     setRawTasks(prev => prev.map(t => t.id === id ? { ...t, done: true } : t))
     if (supabase) await supabase.from('tasks').update({ done: true }).eq('id', id)
+  }
+
+  const handleSave = (updated) => {
+    setRawTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+    setActive(null)
+  }
+
+  const handleDelete = (id) => {
+    setRawTasks(prev => prev.filter(t => t.id !== id))
+    setActive(null)
   }
 
   const toggleRun = async (itemId, runId, current) => {
@@ -179,6 +195,15 @@ export default function TasksSurface({ bp }) {
             </Panel>
           ))}
         </div>
+        {active && (
+          <TaskDetail
+            task={active}
+            projects={projects}
+            onClose={() => setActive(null)}
+            onSave={handleSave}
+            onDelete={handleDelete}
+          />
+        )}
       </div>
     )
   }
@@ -206,11 +231,20 @@ export default function TasksSurface({ bp }) {
               {p && <div style={{ fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-3)', marginTop: -2, marginBottom: 12 }}>{p.blurb}</div>}
               <div style={{ marginTop: 2 }}>
                 {projTasks.length
-                  ? projTasks.map(t => <TaskRow key={t.id} task={t} projects={projects} onToggle={toggle} showProject={false} />)
+                  ? projTasks.map(t => <TaskRow key={t.id} task={t} projects={projects} onToggle={toggle} onOpen={setActive} showProject={false} />)
                   : <div style={{ fontFamily: 'var(--sans)', color: 'var(--ink-3)', fontSize: 14, padding: '8px 0' }}>Nothing open here.</div>}
               </div>
             </Panel>
           </div>
+          {active && (
+            <TaskDetail
+              task={active}
+              projects={projects}
+              onClose={() => setActive(null)}
+              onSave={handleSave}
+              onDelete={handleDelete}
+            />
+          )}
         </div>
       )
     }
@@ -247,7 +281,7 @@ export default function TasksSurface({ bp }) {
     >
       <div data-testid={testid} style={{ marginTop: -4 }}>
         {items.length
-          ? items.map(t => <TaskRow key={t.id} task={t} projects={projects} onToggle={toggle} />)
+          ? items.map(t => <TaskRow key={t.id} task={t} projects={projects} onToggle={toggle} onOpen={setActive} />)
           : <div style={{ fontFamily: 'var(--sans)', color: 'var(--ink-4)', fontSize: 13, padding: '6px 0' }}>—</div>}
       </div>
     </Panel>
@@ -265,6 +299,15 @@ export default function TasksSurface({ bp }) {
           <div data-testid="tasks-group-week"><Group label="This week" items={grouped.week} testid="tasks-week-items" /></div>
           <div data-testid="tasks-group-rest"><Group label="The rest" items={grouped.rest} testid="tasks-rest-items" /></div>
         </div>
+      )}
+      {active && (
+        <TaskDetail
+          task={active}
+          projects={projects}
+          onClose={() => setActive(null)}
+          onSave={handleSave}
+          onDelete={handleDelete}
+        />
       )}
     </div>
   )
