@@ -134,7 +134,7 @@ export default function ChaosSurface({ bp }) {
   useEffect(() => {
     if (!supabase) { setLoading(false); return }
     supabase.schema('chaos').from('signals')
-      .select('id, ticker, setup_type, conviction, r_ratio, entry_low, entry_high, stop, target, memo, ai_reasoning, action, status')
+      .select('id, ticker, signal_date, setup_type, conviction, r_ratio, entry_low, entry_high, stop, target, memo, ai_reasoning, action, status')
       .then(({ data }) => {
         setSignals(data || [])
         setLoading(false)
@@ -142,7 +142,9 @@ export default function ChaosSurface({ bp }) {
       .catch(() => setLoading(false))
   }, [])
 
-  const newSignals    = signals.filter(s => s.action === 'pending')
+  // Drop stale pending signals after 2 days; held ('take') positions stay regardless of age
+  const cutoff = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)
+  const newSignals    = signals.filter(s => s.action === 'pending' && (!s.signal_date || s.signal_date >= cutoff))
   const activeSignals = signals.filter(s => s.action === 'take')
   const columns = bp === 'ipad' ? 3 : bp === 'mini' ? 2 : 1
 
