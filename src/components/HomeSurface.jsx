@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
 import Icon from './Icon.jsx'
 import { Sheet, SheetHead } from './Sheet.jsx'
@@ -492,7 +492,7 @@ function EventDetail({ ev, onClose }) {
   )
 }
 
-function ChiefOfStaffCard({ stagedCount, onUpNextClick }) {
+function ChiefOfStaffCard({ stagedCount, onUpNextClick, onSessionDone }) {
   const [phase, setPhase] = useState('idle') // 'idle' | 'running' | 'done' | 'error'
   const [errMsg, setErrMsg] = useState('')
   const [reqId, setReqId] = useState(null)
@@ -536,6 +536,7 @@ function ChiefOfStaffCard({ stagedCount, onUpNextClick }) {
       if (row.status === 'done') {
         clearInterval(timerRef.current)
         setPhase('done')
+        onSessionDone?.()
       } else if (row.status === 'error') {
         clearInterval(timerRef.current)
         setPhase('error')
@@ -636,7 +637,7 @@ export default function HomeSurface({ bp }) {
   const [staged, setStaged] = useState([])
   const [upNextOpen, setUpNextOpen] = useState(false)
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     if (!supabase) { setLoading(false); return }
     const today = new Date()
     const todayStr = today.toISOString().split('T')[0]
@@ -687,6 +688,8 @@ export default function HomeSurface({ bp }) {
       .catch(() => setLoading(false))
   }, [])
 
+  useEffect(() => { loadData() }, [loadData])
+
   if (loading) {
     return (
       <div data-testid="cockpit" style={{ color: 'var(--ink-3)', fontFamily: 'var(--sans)', fontSize: 14, padding: 16 }}>
@@ -715,7 +718,7 @@ export default function HomeSurface({ bp }) {
         <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
         <TasksMini tasks={tasks} projects={projects} />
         <LoopsPanel loops={loops} />
-        <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} />
+        <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} onSessionDone={loadData} />
         {detailSheet}
         {upNextSheet}
       </div>
@@ -737,7 +740,7 @@ export default function HomeSurface({ bp }) {
             <PeoplePanel people={people} />
           </div>
         </div>
-        <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} />
+        <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} onSessionDone={loadData} />
         {detailSheet}
         {upNextSheet}
       </div>
@@ -758,7 +761,7 @@ export default function HomeSurface({ bp }) {
           <ProtocolsPanel protocols={protocols} />
         </div>
       </div>
-      <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} />
+      <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} onSessionDone={loadData} />
       {detailSheet}
       {upNextSheet}
     </div>
