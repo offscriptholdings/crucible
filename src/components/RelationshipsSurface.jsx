@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { Sheet, SheetHead } from './Sheet.jsx'
+import Icon from './Icon.jsx'
 
 const CAT_ORDER = ['family', 'friend', 'church', 'business', 'other']
 const CAT_LABEL = { family: 'Family', friend: 'Friends', church: 'Church', business: 'Business', other: 'Other' }
@@ -32,35 +34,58 @@ function fmtWhen(ts) {
   catch { return '' }
 }
 
-function PersonRow({ r, facts, first }) {
-  const dates = fmtKeyDates(r.key_dates)
+function PersonRow({ r, factCount, onOpen, first }) {
+  const hint = fmtKeyDates(r.key_dates)[0]
   return (
     <div>
       {!first && <hr className="cx-div" />}
-      <div style={{ padding: '13px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: facts.length || dates.length ? 7 : 0 }}>
-          <span style={{ fontFamily: 'var(--sans)', fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{r.name}</span>
-          {dates.map((d, j) => (
-            <span key={j} className="mono" style={{ marginLeft: j === 0 ? 'auto' : 0, fontSize: 11, color: 'var(--ink-3)', padding: '2px 8px', border: '1px solid var(--line)', borderRadius: 7 }}>{d}</span>
-          ))}
-        </div>
-        {facts.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <button
+        data-testid="person-row"
+        onClick={() => onOpen(r)}
+        className="cx-press"
+        style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '13px 0', display: 'flex', alignItems: 'center', gap: 10 }}
+      >
+        <span style={{ fontFamily: 'var(--sans)', fontSize: 15, fontWeight: 600, color: 'var(--ink)', flex: 'none' }}>{r.name}</span>
+        {hint && <span className="mono" style={{ fontSize: 11, color: 'var(--ink-4)' }}>{hint}</span>}
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ink-4)' }}>
+          {factCount > 0 && <span style={{ fontFamily: 'var(--sans)', fontSize: 11.5 }}>{factCount} note{factCount > 1 ? 's' : ''}</span>}
+          <Icon name="chevron" size={15} />
+        </span>
+      </button>
+    </div>
+  )
+}
+
+function PersonSheet({ person, facts, onClose }) {
+  const dates = fmtKeyDates(person.key_dates)
+  return (
+    <Sheet data-testid="person-sheet" onClose={onClose} maxWidth={460}>
+      <SheetHead eyebrow={CAT_LABEL[catOf(person.relationship)]} title={person.name} onClose={onClose} />
+      <div className="cx-scroll" style={{ padding: '18px 18px 24px' }}>
+        {dates.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: facts.length ? 20 : 0 }}>
+            {dates.map((d, j) => (
+              <span key={j} className="mono" style={{ fontSize: 11.5, color: 'var(--ink-2)', padding: '3px 9px', border: '1px solid var(--line-strong)', borderRadius: 8 }}>{d}</span>
+            ))}
+          </div>
+        )}
+        {facts.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="eyebrow">What I know</div>
             {facts.map(f => (
-              <div key={f.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <span style={{ flex: 'none', marginTop: 6, width: 4, height: 4, borderRadius: 4, background: 'var(--ink-4)' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ fontFamily: 'var(--sans)', fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.45 }}>{f.detail}</span>
-                  <span style={{ fontFamily: 'var(--sans)', fontSize: 11, color: 'var(--ink-4)', marginLeft: 8 }}>
-                    {f.source || '—'}{fmtWhen(f.created_at) ? ` · ${fmtWhen(f.created_at)}` : ''}
-                  </span>
+              <div key={f.id}>
+                <div style={{ fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--ink)', lineHeight: 1.5 }}>{f.detail}</div>
+                <div style={{ fontFamily: 'var(--sans)', fontSize: 11, color: 'var(--ink-4)', marginTop: 3 }}>
+                  {f.source || '—'}{fmtWhen(f.created_at) ? ` · ${fmtWhen(f.created_at)}` : ''}
                 </div>
               </div>
             ))}
           </div>
+        ) : (
+          <div style={{ fontFamily: 'var(--sans)', fontSize: 13.5, color: 'var(--ink-4)', fontStyle: 'italic' }}>No details logged yet.</div>
         )}
       </div>
-    </div>
+    </Sheet>
   )
 }
 
@@ -68,6 +93,7 @@ export default function RelationshipsSurface({ bp }) {
   const [people, setPeople] = useState([])
   const [details, setDetails] = useState([])
   const [loading, setLoading] = useState(true)
+  const [active, setActive] = useState(null)
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return }
@@ -113,11 +139,17 @@ export default function RelationshipsSurface({ bp }) {
             <div key={g.cat}>
               <div className="eyebrow" style={{ marginBottom: 8 }}>{CAT_LABEL[g.cat]} · {g.list.length}</div>
               <div className="cx-panel" style={{ padding: '4px 18px' }}>
-                {g.list.map((r, i) => <PersonRow key={r.id} r={r} facts={byPerson[r.id] || []} first={i === 0} />)}
+                {g.list.map((r, i) => (
+                  <PersonRow key={r.id} r={r} factCount={(byPerson[r.id] || []).length} onOpen={setActive} first={i === 0} />
+                ))}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {active && (
+        <PersonSheet person={active} facts={byPerson[active.id] || []} onClose={() => setActive(null)} />
       )}
     </div>
   )
