@@ -34,8 +34,7 @@ function fmtWhen(ts) {
   catch { return '' }
 }
 
-function PersonRow({ r, factCount, onOpen, first }) {
-  const hint = fmtKeyDates(r.key_dates)[0]
+function PersonRow({ r, onOpen, first }) {
   return (
     <div>
       {!first && <hr className="cx-div" />}
@@ -45,12 +44,8 @@ function PersonRow({ r, factCount, onOpen, first }) {
         className="cx-press"
         style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '13px 0', display: 'flex', alignItems: 'center', gap: 10 }}
       >
-        <span style={{ fontFamily: 'var(--sans)', fontSize: 15, fontWeight: 600, color: 'var(--ink)', flex: 'none' }}>{r.name}</span>
-        {hint && <span className="mono" style={{ fontSize: 11, color: 'var(--ink-4)' }}>{hint}</span>}
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ink-4)' }}>
-          {factCount > 0 && <span style={{ fontFamily: 'var(--sans)', fontSize: 11.5 }}>{factCount} note{factCount > 1 ? 's' : ''}</span>}
-          <Icon name="chevron" size={15} />
-        </span>
+        <span style={{ fontFamily: 'var(--sans)', fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{r.name}</span>
+        <span style={{ marginLeft: 'auto', display: 'flex', color: 'var(--ink-4)' }}><Icon name="chevron" size={15} /></span>
       </button>
     </div>
   )
@@ -140,7 +135,7 @@ export default function RelationshipsSurface({ bp }) {
               <div className="eyebrow" style={{ marginBottom: 8 }}>{CAT_LABEL[g.cat]} · {g.list.length}</div>
               <div className="cx-panel" style={{ padding: '4px 18px' }}>
                 {g.list.map((r, i) => (
-                  <PersonRow key={r.id} r={r} factCount={(byPerson[r.id] || []).length} onOpen={setActive} first={i === 0} />
+                  <PersonRow key={r.id} r={r} onOpen={setActive} first={i === 0} />
                 ))}
               </div>
             </div>
