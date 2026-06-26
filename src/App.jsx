@@ -5,14 +5,12 @@ import TasksSurface from './components/TasksSurface.jsx'
 import HomeSurface from './components/HomeSurface.jsx'
 import SoapSurface from './components/SoapSurface.jsx'
 import NotesSurface from './components/NotesSurface.jsx'
-import ChaosSurface from './components/ChaosSurface.jsx'
 
 const NAV = [
   { id: 'home',  icon: 'home',  label: 'Home' },
   { id: 'tasks', icon: 'tasks', label: 'Tasks' },
   { id: 'soap',  icon: 'soap',  label: 'SOAP' },
   { id: 'people', icon: 'people', label: 'People' },
-  { id: 'chaos', icon: 'chaos', label: 'Chaos' },
   { id: 'notes', icon: 'notes', label: 'Notes' },
 ]
 
@@ -63,7 +61,6 @@ export default function App() {
       case 'tasks':  return <TasksSurface key={appKey} bp={bp} />
       case 'soap':   return <SoapSurface key={appKey} bp={bp} />
       case 'people': return <RelationshipsSurface key={appKey} bp={bp} />
-      case 'chaos':  return <ChaosSurface key={appKey} bp={bp} />
       case 'notes':  return <NotesSurface key={appKey} bp={bp} />
       default: return null
     }
