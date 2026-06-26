@@ -285,6 +285,28 @@ function ProtocolsPanel({ protocols }) {
   )
 }
 
+function ProjectsPanel({ projects }) {
+  return (
+    <Panel eyebrow="Projects" title="What you're running" pad={16} data-testid="panel-projects">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {projects.length === 0 ? (
+          <p style={{ fontFamily: 'var(--sans)', color: 'var(--ink-3)', fontSize: 14 }}>No active projects.</p>
+        ) : (
+          projects.map(p => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '9px 0' }}>
+              <span style={{ color: 'var(--ink-4)', marginTop: 1, flex: 'none', display: 'flex' }}><Icon name="projects" size={17} /></span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--ink)', lineHeight: 1.3 }}>{p.name}</div>
+                {p.blurb && <div style={{ fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{p.blurb}</div>}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </Panel>
+  )
+}
+
 function PeoplePanel({ people }) {
   return (
     <Panel eyebrow="Relationships" title="The people" pad={16} data-testid="panel-people">
@@ -653,7 +675,7 @@ export default function HomeSurface({ bp }) {
       supabase.from('protocols').select('*'),
       supabase.from('people').select('*'),
       supabase.from('tasks').select('*').eq('done', false).in('horizon', ['today', 'week']).order('horizon'),
-      supabase.from('projects').select('id, name'),
+      supabase.from('projects').select('id, name, blurb'),
       supabase.from('staged_items')
         .select('id, kind, title, detail, dispositions, status')
         .in('status', ['staged', 'acting'])
@@ -736,8 +758,7 @@ export default function HomeSurface({ bp }) {
             <TasksMini tasks={tasks} projects={projects} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <ProtocolsPanel protocols={protocols} />
-            <PeoplePanel people={people} />
+            <ProjectsPanel projects={projects} />
           </div>
         </div>
         <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} onSessionDone={loadData} />
@@ -753,12 +774,11 @@ export default function HomeSurface({ bp }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1.08fr 1fr', gap: 16, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
-          <PeoplePanel people={people} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <LoopsPanel loops={loops} />
           <TasksMini tasks={tasks} projects={projects} />
-          <ProtocolsPanel protocols={protocols} />
+          <ProjectsPanel projects={projects} />
         </div>
       </div>
       <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} onSessionDone={loadData} />

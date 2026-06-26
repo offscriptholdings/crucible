@@ -29,6 +29,8 @@ export default function Icon({ name, size = 20, stroke = 1.6, style }) {
       return <svg {...p}><circle cx="9" cy="9" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.5a3 3 0 0 1 0 5.6"/><path d="M17 14.2a5.5 5.5 0 0 1 3.5 4.8"/></svg>;
     case "protocol":
       return <svg {...p}><path d="M6.5 9v6M17.5 9v6"/><path d="M4 10.5v3M20 10.5v3"/><path d="M6.5 12h11"/></svg>;
+    case "projects":
+      return <svg {...p}><path d="M12 3 21 7.5 12 12 3 7.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>;
     case "close":
       return <svg {...p}><path d="M6 6l12 12M18 6L6 18"/></svg>;
     case "plus":
