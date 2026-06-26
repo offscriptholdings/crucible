@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
 import Icon from './Icon.jsx'
 import { Sheet, SheetHead } from './Sheet.jsx'
+import TaskDetail from './TaskDetail.jsx'
 
 const COS_TERMINAL_URL = import.meta.env.VITE_COS_TERMINAL_URL || ''
 
@@ -99,10 +100,15 @@ function UpNextNudge({ count, onClick }) {
   )
 }
 
-function CockpitTaskRow({ task, projects }) {
+function CockpitTaskRow({ task, projects, onOpen }) {
   const proj = projects.find(p => p.id === task.project_id)
   return (
-    <div className="cx-row" style={{ alignItems: 'center', padding: '9px 0' }}>
+    <button
+      data-testid="cockpit-task-row"
+      onClick={() => onOpen && onOpen(task)}
+      className="cx-press"
+      style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0' }}
+    >
       <span style={{ width: 21, height: 21, flex: 'none', border: '1.5px solid var(--line-strong)', borderRadius: 7 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: 'var(--sans)', fontSize: 14.5, lineHeight: 1.3, color: 'var(--ink)' }}>{task.text}</div>
@@ -112,7 +118,7 @@ function CockpitTaskRow({ task, projects }) {
           {proj.name.replace(/ —.*/, '')}
         </span>
       )}
-    </div>
+    </button>
   )
 }
 
@@ -248,16 +254,16 @@ function LoopsPanel({ loops }) {
   )
 }
 
-function TasksMini({ tasks, projects }) {
+function TasksMini({ tasks, projects, onOpen }) {
   const today = tasks.today
   const week = tasks.week.slice(0, 2)
   return (
     <Panel eyebrow="Tasks" title="Today & tomorrow" pad={16} data-testid="panel-tasks-mini">
       <div className="eyebrow" style={{ color: 'var(--ink-2)', marginBottom: 2 }}>Today</div>
-      {today.map(t => <CockpitTaskRow key={t.id} task={t} projects={projects} />)}
+      {today.map(t => <CockpitTaskRow key={t.id} task={t} projects={projects} onOpen={onOpen} />)}
       <hr className="cx-div" style={{ margin: '8px 0' }} />
       <div className="eyebrow" style={{ marginBottom: 2 }}>Tomorrow</div>
-      {week.map(t => <CockpitTaskRow key={t.id} task={t} projects={projects} />)}
+      {week.map(t => <CockpitTaskRow key={t.id} task={t} projects={projects} onOpen={onOpen} />)}
     </Panel>
   )
 }
@@ -285,7 +291,7 @@ function ProtocolsPanel({ protocols }) {
   )
 }
 
-function ProjectsPanel({ projects }) {
+function ProjectsPanel({ projects, onOpen }) {
   return (
     <Panel eyebrow="Projects" title="What you're running" pad={16} data-testid="panel-projects">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -293,17 +299,62 @@ function ProjectsPanel({ projects }) {
           <p style={{ fontFamily: 'var(--sans)', color: 'var(--ink-3)', fontSize: 14 }}>No active projects.</p>
         ) : (
           projects.map(p => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '9px 0' }}>
+            <button
+              key={p.id}
+              data-testid="cockpit-project-row"
+              onClick={() => onOpen && onOpen(p)}
+              className="cx-press"
+              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 12, padding: '9px 0' }}
+            >
               <span style={{ color: 'var(--ink-4)', marginTop: 1, flex: 'none', display: 'flex' }}><Icon name="projects" size={17} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--ink)', lineHeight: 1.3 }}>{p.name}</div>
                 {p.blurb && <div style={{ fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{p.blurb}</div>}
               </div>
-            </div>
+              <span style={{ flex: 'none', display: 'flex', color: 'var(--ink-4)', marginTop: 1 }}><Icon name="chevron" size={15} /></span>
+            </button>
           ))
         )}
       </div>
     </Panel>
+  )
+}
+
+function ProjectSheet({ project, onClose }) {
+  const [tasks, setTasks] = useState([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    if (!supabase) { setLoading(false); return }
+    supabase.from('tasks').select('*').eq('project_id', project.id).eq('done', false).order('horizon')
+      .then(({ data }) => { setTasks(data || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [project.id])
+  const HZ = { today: 'Today', week: 'This week', rest: 'The rest' }
+  return (
+    <Sheet data-testid="project-sheet" onClose={onClose} maxWidth={480}>
+      <SheetHead eyebrow="Project" title={project.name} onClose={onClose} />
+      <div className="cx-scroll" style={{ padding: '18px 18px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {project.blurb && <p style={{ margin: 0, fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.5 }}>{project.blurb}</p>}
+        <div>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>Open tasks{tasks.length ? ` · ${tasks.length}` : ''}</div>
+          {loading ? (
+            <div style={{ fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-4)' }}>Loading…</div>
+          ) : tasks.length === 0 ? (
+            <div style={{ fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--ink-4)', fontStyle: 'italic' }}>No open tasks.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {tasks.map(t => (
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
+                  <span style={{ flex: 'none', width: 4, height: 4, borderRadius: 4, background: 'var(--ink-4)' }} />
+                  <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--ink)', lineHeight: 1.35 }}>{t.text}</span>
+                  <span className="eyebrow" style={{ flex: 'none' }}>{HZ[t.horizon] || t.horizon}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Sheet>
   )
 }
 
@@ -658,6 +709,8 @@ export default function HomeSurface({ bp }) {
   const [eventDetail, setEventDetail] = useState(null)
   const [staged, setStaged] = useState([])
   const [upNextOpen, setUpNextOpen] = useState(false)
+  const [activeTask, setActiveTask] = useState(null)
+  const [activeProject, setActiveProject] = useState(null)
 
   const loadData = useCallback(() => {
     if (!supabase) { setLoading(false); return }
@@ -733,16 +786,32 @@ export default function HomeSurface({ bp }) {
     <EventDetail ev={eventDetail} onClose={() => setEventDetail(null)} />
   ) : null
 
+  const taskSheet = activeTask ? (
+    <TaskDetail
+      task={activeTask}
+      projects={projects}
+      onClose={() => setActiveTask(null)}
+      onSave={() => { setActiveTask(null); loadData() }}
+      onDelete={() => { setActiveTask(null); loadData() }}
+    />
+  ) : null
+
+  const projectSheet = activeProject ? (
+    <ProjectSheet project={activeProject} onClose={() => setActiveProject(null)} />
+  ) : null
+
   if (bp === 'iphone') {
     return (
       <div data-testid="cockpit" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <BriefBlock brief={brief} todayLabel={todayLabel} />
         <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
-        <TasksMini tasks={tasks} projects={projects} />
+        <TasksMini tasks={tasks} projects={projects} onOpen={setActiveTask} />
         <LoopsPanel loops={loops} />
         <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} onSessionDone={loadData} />
         {detailSheet}
         {upNextSheet}
+        {taskSheet}
+        {projectSheet}
       </div>
     )
   }
@@ -755,15 +824,17 @@ export default function HomeSurface({ bp }) {
           <CalendarPanel calDays={calDays} onOpen={setEventDetail} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <LoopsPanel loops={loops} />
-            <TasksMini tasks={tasks} projects={projects} />
+            <TasksMini tasks={tasks} projects={projects} onOpen={setActiveTask} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <ProjectsPanel projects={projects} />
+            <ProjectsPanel projects={projects} onOpen={setActiveProject} />
           </div>
         </div>
         <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} onSessionDone={loadData} />
         {detailSheet}
         {upNextSheet}
+        {taskSheet}
+        {projectSheet}
       </div>
     )
   }
@@ -777,13 +848,15 @@ export default function HomeSurface({ bp }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <LoopsPanel loops={loops} />
-          <TasksMini tasks={tasks} projects={projects} />
-          <ProjectsPanel projects={projects} />
+          <TasksMini tasks={tasks} projects={projects} onOpen={setActiveTask} />
+          <ProjectsPanel projects={projects} onOpen={setActiveProject} />
         </div>
       </div>
       <ChiefOfStaffCard stagedCount={stagedCount} onUpNextClick={() => setUpNextOpen(true)} onSessionDone={loadData} />
       {detailSheet}
       {upNextSheet}
+      {taskSheet}
+      {projectSheet}
     </div>
   )
 }
